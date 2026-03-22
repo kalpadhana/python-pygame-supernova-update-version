@@ -72,7 +72,7 @@ A thrilling 2D vertical scrolling space shooter game built with Python and Pygam
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/SuperNova.git
+   git clone https://github.com/kalpadhana/SuperNova.git
    cd SuperNova
    ```
 
