@@ -14,45 +14,52 @@ A thrilling 2D vertical scrolling space shooter game built with Python and Pygam
 
 ### 🚀 Core Gameplay
 - **Vertical scrolling space shooter** with smooth 60 FPS gameplay
-- **Progressive difficulty system** that adapts based on your score
-- **Resource management** - manage health and ammunition strategically
-- **Multiple control options** - keyboard and gamepad/joystick support
-- **Dynamic backgrounds** that change as you progress through the game
+- **Roguelite Level-Up System** with modular perks (Speed, Health, Drones, Fire Rate)
+- **Time-Bending Ultimate Ability** - Charge your meter through combat to slow down enemies and bullets
+- **Progressive difficulty system** that dynamically scales enemy and boss health
+- **Resource management** - manage modern health bars and limited ammunition strategically
+- **Multiple control options** - keyboard, mouse clicks, and gamepad/joystick support
+- **Dynamic backgrounds** that change as you progress through different sectors
 
 ### 🎯 Combat System
-- **Player-controlled spacecraft** with multi-directional movement
-- **Bullet-based combat** with limited ammunition requiring strategic use
-- **Three types of enemies** with unique behaviors and attack patterns
-- **Epic boss battles** featuring three distinct boss encounters
-- **Collision detection** with visual explosion effects
+- **Player-controlled spacecraft** with multi-directional movement and an Invincibility Dash
+- **Floating Damage Numbers** to clearly display RPG-style hits on enemies and yourself
+- **Bullet-based combat** facing enemies that dynamically spawn their own targeting projectiles
+- **Three types of advanced enemies** that track you, repel off each other, and shoot back
+- **Epic boss battles** featuring three distinct encounters with complex bullet-hell mechanics
+- **Companion Drones** - automated helpers that orbit your ship and shoot nearby threats
 
 ### 🎁 Power-ups & Collectibles
-- **Health Refills** - Restore your spacecraft's health
+- **Health Refills** - Restore your spacecraft's modern UI health bar
 - **Bullet Refills** - Replenish ammunition supplies
 - **Double Refills** - Special power-ups for enhanced capabilities
-- **Extra Score** - Bonus points to boost your high score
+- **Extra Score** - Bonus points to boost your permanent Leaderboard rankings
 
 ### 🌌 Environmental Hazards
-- **Meteor showers** with varying sizes and speeds
-- **Black holes** that pose additional navigation challenges
+- **Meteor showers** with varying sizes, speeds, and explosion radii
+- **Black holes** that exert gravitational pulls and pose intense navigation challenges
 - **Dynamic background transitions** at score milestones (3K, 10K, 15K points)
 
 ### 🎵 Audio Experience
-- **Background music** with volume-controlled audio mixing
-- **Sound effects** for explosions, power-ups, and game events
-- **Game state audio** including win/lose soundtracks
+- **Spatial Background music** with dynamic volume-controlled audio mixing
+- **Sound Event Bus** managing dedicated sound effects for explosions, ultimate abilities, and dash moves
 
 ## 🎮 Controls
 
-### Keyboard Controls
+### Keyboard & Mouse Controls
 - **Arrow Keys** - Move your spacecraft (supports diagonal movement)
 - **Spacebar** - Shoot bullets (hold for continuous fire)
-- **P / Pause** - Pause/unpause the game
+- **Left Shift / Right Shift** - Perform an evasive Dash with Invincibility Frames
+- **Enter (Return)** - Trigger Ultimate Ability ("Bullet Time") when fully charged
+- **Mouse Click / Arrow Keys** - Select your Roguelite level-up perk
+- **P / Pause** - Open modern pause menu
 - **Escape** - Exit the game
 
 ### Gamepad/Joystick Controls
 - **Left Stick** - Move spacecraft in all directions
-- **Button 0** - Shoot bullets
+- **Button 0 (A)** - Shoot bullets / Select Perks
+- **Button 3 (Y)** - Trigger Ultimate Ability
+- **Button 4 / 5 (Bumpers)** - Perform evasive Dash
 - **D-pad** - Navigate menus
 
 ## 🚀 Getting Started
@@ -88,40 +95,72 @@ A thrilling 2D vertical scrolling space shooter game built with Python and Pygam
 
 ```
 SuperNova/
-├── main.py              # Main game loop and core logic
-├── menu.py              # Main menu system with navigation
-├── controls.py          # Player input handling (keyboard/gamepad)
-├── functions.py         # Utility functions (audio, game over screen)
-├── requirements.txt     # Project dependencies
-├── classes/             # Game entity classes
-│   ├── player.py        # Player spacecraft class
-│   ├── bullets.py       # Bullet projectile system
-│   ├── enemies.py       # Enemy types and behaviors
-│   ├── bosses.py        # Boss encounter mechanics
-│   ├── meteors.py       # Environmental hazards
-│   ├── refill.py        # Power-up and collectible items
-│   ├── explosions.py    # Visual explosion effects
-│   └── constants.py     # Game configuration constants
-├── images/              # Sprite assets and graphics
-├── game_sounds/         # Audio files and music
-└── SuperNova.mp4        # Game preview video
+├── main.py                 # Main game loop and core logic
+├── menu.py                 # Main menu system with navigation
+├── advanced_menus.py       # Modern UI pause and settings menus
+├── controls.py             # Player input handling (keyboard/gamepad)
+├── functions.py            # Utility functions (audio, game over screen)
+├── modern_features.py      # Dash, Ultimate, Drones, & Roguelite Leveling managers
+├── modern_ui.py            # High-fidelity health bar & UI overlays
+├── achievements.py         # In-game trophy and achievement tracker
+├── enemy_types.py          # AI behaviors & advanced entity logic
+├── game_difficulty.py      # Dynamic difficulty scaling architecture
+├── game_modes.py           # Alternate modes & game state tracking
+├── leaderboard.py          # High score storage system
+├── particle_effects.py     # Modern rendering visual particles
+├── powerups.py             # Dynamic logic for spawning multi-tier powerups
+├── sound_manager.py        # Centralized audio event bus system
+├── visual_effects.py       # Screen shake and hit-flash renderer
+├── weapons.py              # Expandable armory & bullet patterning
+├── requirements.txt        # Project dependencies
+├── json/ (auto-generated)  # Local storage for stats, leaderboards & achievements
+├── classes/                # Classic entity module classes
+│   ├── player.py           # Core spacecraft logic
+│   ├── bullets.py          # Base bullet projectile classes
+│   ├── enemies.py          # Standard enemy mechanics
+│   ├── bosses.py           # Boss encounter scripting
+│   ├── meteors.py          # Environmental hazards
+│   ├── refill.py           # Pickup item classes
+│   ├── explosions.py       # Standard visual collision effects
+│   └── constants.py        # Display and FPS definitions
+├── images/                 # Sprite assets and graphics
+└── game_sounds/            # Audio files and music
 ```
 
-## 🎯 Gameplay Mechanics
+## 🎯 Advanced Gameplay Mechanics
 
-### Scoring System
-- **Enemy defeats** contribute to your score
+### Roguelite Metaprogression
+- **XP Orbs** drop on enemy and boss kills
+- **Leveling Up** completely pauses the game and prompts a random choice of 3 permanent upgrades
+- **Upgrades Include:** Increasing max HP, decreasing firing delay, increasing movement speed, or summoning orbital Drones.
+
+### Bullet Time Ultimate
+- Hitting enemies charges a secondary meter on the screen
+- Once optimally charged, pressing **Enter/Y** drastically slows down enemy speed and bullet logic
+- Gives the player precious seconds to thread through dense bullet-hells
+
+### Scoring & Achievements
+- **Enemy defeats** contribute to your real-time score
+- **Boss victories** act as massive milestones
+- **Achievement Unlocks** visually appear for milestones like passing 10k points or surviving 3 boss encounters
+- **Persistent Leaderboard** securely stores your highest ranks across multiple application sessions
 - **Boss victories** provide substantial score bonuses
 - **Collectible items** offer additional points
 - **High score tracking** across game sessions
 
-### Difficulty Progression
-The game features a dynamic difficulty system that scales with your performance:
+### Difficulty Progression & Levels
+The game features a dynamic difficulty system that scales with your score and survival time:
 
-- **0-3,000 points**: Initial difficulty with basic enemies
-- **3,000+ points**: Background changes, increased enemy spawn rates
-- **10,000+ points**: New background, faster enemy movement
-- **15,000+ points**: Final background, maximum difficulty with all enemy types
+- **Sector 1 (0 - 3,000 points):** Initial difficulty. Introduces basic tracker enemies and meteor fields. 
+- **Sector 2 (3,000 - 10,000 points):** Background warp. Introduces aggressive shooting enemies and increased spawn rates.
+- **Sector 3 (10,000+ points):** Hostile territory. Introduces complex enemy formations and bullet-hell mechanics.
+- **Boss Encounters:** At specific milestones, regular enemy spawns halt, and you must defeat colossal Boss ships with unique attack patterns to proceed.
+- **Dynamic Scaling:** Powered by the new difficulty architecture, enemy health, bullet speed, and fire rates dynamically increase as your score climbs.
+
+### Player Character Levels & Perks
+- **Experience (XP):** Defeating enemies and bosses drops XP.
+- **Roguelite Level-Up:** Filling the XP bar pauses the game and provides a choice of 3 randomized permanent upgrades.
+- **Build Variety:** Stack perks like Orbital Drones, Fire Rate enhancements, Max HP buffs, and Movement Speed boosts to adapt to the rising difficulty.
 
 ### Health & Ammunition System
 - **Player Health**: 200 HP starting health, decreases with collisions

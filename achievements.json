@@ -1,0 +1,106 @@
+{
+  "achievements": {
+    "first_blood": {
+      "id": "first_blood",
+      "name": "First Blood",
+      "description": "Defeat your first enemy",
+      "unlocked": true,
+      "unlock_date": "2026-03-22T20:04:20.003471"
+    },
+    "headhunter": {
+      "id": "headhunter",
+      "name": "Headhunter",
+      "description": "Defeat 10 enemies",
+      "unlocked": true,
+      "unlock_date": "2026-03-22T20:04:37.860139"
+    },
+    "genocide": {
+      "id": "genocide",
+      "name": "Genocide",
+      "description": "Defeat 50 enemies",
+      "unlocked": true,
+      "unlock_date": "2026-03-22T20:05:05.175338"
+    },
+    "boss_slayer": {
+      "id": "boss_slayer",
+      "name": "Boss Slayer",
+      "description": "Defeat your first boss",
+      "unlocked": false,
+      "unlock_date": null
+    },
+    "champion": {
+      "id": "champion",
+      "name": "Champion",
+      "description": "Defeat 5 bosses",
+      "unlocked": false,
+      "unlock_date": null
+    },
+    "survivor": {
+      "id": "survivor",
+      "name": "Survivor",
+      "description": "Reach 1000 score",
+      "unlocked": true,
+      "unlock_date": "2026-03-22T20:05:05.175366"
+    },
+    "legend": {
+      "id": "legend",
+      "name": "Legend",
+      "description": "Reach 10000 score",
+      "unlocked": false,
+      "unlock_date": null
+    },
+    "sharpshooter": {
+      "id": "sharpshooter",
+      "name": "Sharpshooter",
+      "description": "Fire 1000 bullets",
+      "unlocked": false,
+      "unlock_date": null
+    },
+    "damage_dealer": {
+      "id": "damage_dealer",
+      "name": "Damage Dealer",
+      "description": "Deal 5000 total damage",
+      "unlocked": false,
+      "unlock_date": null
+    },
+    "no_hit": {
+      "id": "no_hit",
+      "name": "Untouchable",
+      "description": "Complete a game without taking damage",
+      "unlocked": false,
+      "unlock_date": null
+    },
+    "speedrun": {
+      "id": "speedrun",
+      "name": "Speed Runner",
+      "description": "Complete a game in under 60 seconds",
+      "unlocked": false,
+      "unlock_date": null
+    },
+    "collector": {
+      "id": "collector",
+      "name": "Collector",
+      "description": "Collect 20 power-ups",
+      "unlocked": false,
+      "unlock_date": null
+    }
+  },
+  "progress": {
+    "first_blood": 0,
+    "headhunter": 0,
+    "genocide": 0,
+    "boss_slayer": 0,
+    "champion": 0,
+    "survivor": 0,
+    "legend": 0,
+    "sharpshooter": 0,
+    "damage_dealer": 0,
+    "no_hit": 0,
+    "speedrun": 0,
+    "collector": 0,
+    "enemies": 366,
+    "powerups": 3,
+    "bosses": 0,
+    "score": 4490
+  }
+}

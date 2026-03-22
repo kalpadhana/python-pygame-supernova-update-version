@@ -87,8 +87,6 @@ while show_menu:
                 explosion_sound.play()
                 animate_screen()
                 show_menu = False
-                import main
-                main.main()
                 break
             
             elif quit_button_rect.collidepoint(x, y):
@@ -107,8 +105,6 @@ while show_menu:
                     animate_screen()
                     show_menu = False
                     screen.fill(BLACK)
-                    import main
-                    main.main()
                     break
                 elif selected_button == 1:
                     pygame.quit()
@@ -123,8 +119,6 @@ while show_menu:
                         animate_screen()
                         show_menu = False
                         screen.fill(BLACK)
-                        import main
-                        main.main()
                         break
                     elif selected_button == 1:
                         pygame.quit()
@@ -169,4 +163,3 @@ while show_menu:
     clock.tick(60)
 
 # === CLEANUP ===
-pygame.quit()

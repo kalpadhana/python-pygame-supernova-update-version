@@ -11,12 +11,23 @@ import random
 from controls import move_player, move_player_with_joystick
 from classes.constants import WIDTH, HEIGHT, FPS, SHOOT_DELAY
 from functions import show_game_over, music_background
-from menu import show_menu
 
 # === MODERN UI IMPORTS ===
 from modern_ui import ModernHealthBar, ModernScore
 from particle_effects import ParticleSystem
 from leaderboard import Leaderboard
+
+# === ADVANCED SYSTEMS IMPORTS ===
+from achievements import AchievementSystem
+from game_difficulty import GameDifficulty
+from powerups import PowerUpManager
+from weapons import WeaponSystem, AbilitySystem
+from game_modes import GameModeManager, GameState
+from enemy_types import AdvancedEnemyTypeManager, get_behavior_function
+from sound_manager import SoundManager, SoundEventBus
+from visual_effects import EffectsManager
+from advanced_menus import PauseMenu, SettingsMenu, GameModeSelectorMenu
+from modern_features import DamageNumberManager, DroneManager, DashSystem, UltimateSystem, LevelSystem
 
 from classes.player import Player
 from classes.bullets import Bullet
@@ -29,7 +40,6 @@ from classes.bosses import Boss1, Boss2, Boss3
 
 # === PYGAME INITIALIZATION ===
 pygame.init()
-music_background()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 surface = pygame.Surface((WIDTH, HEIGHT))
 pygame.display.set_caption("Super Nova - Modern Edition")
@@ -40,6 +50,28 @@ health_bar = ModernHealthBar(10, 10, width=200, height=30, max_hp=200)
 score_display = ModernScore(WIDTH - 250, 10)
 particles = ParticleSystem()
 leaderboard = Leaderboard()
+
+# === ADVANCED SYSTEMS INITIALIZATION ===
+achievement_system = AchievementSystem()
+difficulty_system = GameDifficulty()
+game_state = GameState()
+powerup_manager = PowerUpManager()
+weapon_system = WeaponSystem()
+ability_system = AbilitySystem()
+game_mode_manager = GameModeManager()
+enemy_type_manager = AdvancedEnemyTypeManager()
+sound_manager = SoundManager()
+sound_event_bus = SoundEventBus(sound_manager)
+effects_manager = EffectsManager((WIDTH, HEIGHT))
+pause_menu = PauseMenu(WIDTH, HEIGHT)
+settings_menu = SettingsMenu(WIDTH, HEIGHT)
+
+damage_numbers = DamageNumberManager()
+drone_manager = DroneManager()
+dash_system = DashSystem()
+ultimate_system = UltimateSystem()
+level_system = LevelSystem()
+level_up_selected_idx = 0
 
 
 # === SPRITE GROUPS INITIALIZATION ===
@@ -145,8 +177,12 @@ score = 0
 hi_score = 0
 
 player = Player()
-player_life = 200
-bullet_counter = 200
+player_life = difficulty_system.get_current().player_health
+player.shield = 0
+player.speed_boost = 0
+player.ammo = weapon_system.ammo
+player.max_hp = difficulty_system.get_current().player_health
+bullet_counter = weapon_system.ammo
 
 paused = False
 running = True
@@ -158,9 +194,9 @@ if pygame.joystick.get_count() > 0:
     joystick.init()
 
 # === MENU AND SHOOTING CONTROL SETUP ===
-if show_menu:
-    import menu
-    menu.main()
+import menu
+# Restore background music for game after menu exits
+music_background()
 
 is_shooting = False
 last_shot_time = 0
@@ -173,8 +209,101 @@ last_shot_time = 0
 # === MAIN GAME LOOP ===
 while running:
 
+    # === COLLECT EVENTS FIRST ===
+    events = pygame.event.get()
+    
+    # === LEVEL UP MENU HANDLING ===
+    if level_system.show_level_up:
+        for event in events:
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEMOTION:
+                mouse_pos = event.pos
+                for i in range(len(level_system.available_perks)):
+                    rect = pygame.Rect(WIDTH//2 - 200, 200 + i * 100, 400, 80)
+                    if rect.collidepoint(mouse_pos):
+                        level_up_selected_idx = i
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    mouse_pos = event.pos
+                    for i in range(len(level_system.available_perks)):
+                        rect = pygame.Rect(WIDTH//2 - 200, 200 + i * 100, 400, 80)
+                        if rect.collidepoint(mouse_pos):
+                            level_up_selected_idx = i
+                            perk = level_system.available_perks[level_up_selected_idx]
+                            if perk["type"] == "drone":
+                                drone_manager.add_drone()
+                            elif perk["type"] == "health":
+                                player.max_hp += 50
+                                player_life = player.max_hp
+                            elif perk["type"] == "firerate":
+                                SHOOT_DELAY = max(50, SHOOT_DELAY - 20)
+                            elif perk["type"] == "speed":
+                                player.speed += 2
+                            level_system.show_level_up = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    level_up_selected_idx = (level_up_selected_idx - 1) % len(level_system.available_perks)
+                elif event.key == pygame.K_DOWN:
+                    level_up_selected_idx = (level_up_selected_idx + 1) % len(level_system.available_perks)
+                elif event.key == pygame.K_RETURN:
+                    perk = level_system.available_perks[level_up_selected_idx]
+                    if perk["type"] == "drone":
+                        drone_manager.add_drone()
+                    elif perk["type"] == "health":
+                        player.max_hp += 50
+                        player_life = player.max_hp
+                    elif perk["type"] == "firerate":
+                        SHOOT_DELAY = max(50, SHOOT_DELAY - 20)
+                    elif perk["type"] == "speed":
+                        player.speed += 2
+                    level_system.show_level_up = False
+            elif event.type == pygame.JOYHATMOTION:
+                if event.value[1] == 1:
+                    level_up_selected_idx = (level_up_selected_idx - 1) % len(level_system.available_perks)
+                elif event.value[1] == -1:
+                    level_up_selected_idx = (level_up_selected_idx + 1) % len(level_system.available_perks)
+            elif event.type == pygame.JOYBUTTONDOWN:
+                if event.button == 0:
+                    perk = level_system.available_perks[level_up_selected_idx]
+                    if perk["type"] == "drone":
+                        drone_manager.add_drone()
+                    elif perk["type"] == "health":
+                        player.max_hp += 50
+                        player_life = player.max_hp
+                    elif perk["type"] == "firerate":
+                        SHOOT_DELAY = max(50, SHOOT_DELAY - 20)
+                    elif perk["type"] == "speed":
+                        player.speed += 2
+                    level_system.show_level_up = False
+        
+        level_system.draw_menu(screen, WIDTH, HEIGHT, level_up_selected_idx)
+        pygame.display.flip()
+        clock.tick(FPS)
+        continue
+
+    # === PAUSE MENU HANDLING ===
+    if pause_menu.active:
+        for event in events:
+            pause_menu.handle_event(event)
+            if event.type == pygame.QUIT:
+                running = False
+        
+        if pause_menu.result == "resume":
+            pause_menu.active = False
+        elif pause_menu.result == "quit":
+            running = False
+        elif pause_menu.result == "menu":
+            pause_menu.active = False
+        
+        paused = pause_menu.active
+        pause_menu.draw(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
+        continue
+
     # === EVENT HANDLING ===
-    for event in pygame.event.get():
+    for event in events:
         if event.type == pygame.QUIT:
             running = False
 
@@ -182,15 +311,23 @@ while running:
             if event.key == pygame.K_SPACE and not paused:
                 if bullet_counter > 0 and pygame.time.get_ticks() - last_shot_time > SHOOT_DELAY:
                     last_shot_time = pygame.time.get_ticks()
-                    bullet = Bullet(player.rect.centerx, player.rect.top)
-                    bullets.add(bullet)
-                    bullet_counter -= 1
+                    # Use weapon system for advanced firing
+                    bullets_fired = weapon_system.fire((player.rect.centerx, player.rect.top), -90, pygame.time.get_ticks())
+                    for bullet_data in bullets_fired:
+                        bullet = Bullet(int(bullet_data["pos"][0]), int(bullet_data["pos"][1]))
+                        bullet.velocity_y = -bullet_data["speed"]
+                        bullets.add(bullet)
+                    bullet_counter = weapon_system.ammo
                 is_shooting = True
 
             elif event.key == pygame.K_ESCAPE:
                 sys.exit(0)
+            elif event.key == pygame.K_LSHIFT or event.key == pygame.K_RSHIFT:
+                dash_system.try_dash()
+            elif event.key == pygame.K_RETURN and ultimate_system.charge >= ultimate_system.max_charge:
+                ultimate_system.try_activate()
             elif event.key == pygame.K_p or event.key == pygame.K_PAUSE:
-                paused = not paused
+                pause_menu.toggle()
             elif not paused:
                 if event.key == pygame.K_LEFT:
                     player.move_left()
@@ -218,12 +355,21 @@ while running:
         elif event.type == pygame.JOYBUTTONDOWN:
             if event.button == 0 and not paused:
                 is_shooting = True
-                if bullet_counter > 0:
-                    bullet = Bullet(player.rect.centerx, player.rect.top)
-                    bullets.add(bullet)
-                    bullet_counter -= 1
+                if bullet_counter > 0 and pygame.time.get_ticks() - last_shot_time > SHOOT_DELAY:
+                    last_shot_time = pygame.time.get_ticks()
+                    bullets_fired = weapon_system.fire((player.rect.centerx, player.rect.top), -90, pygame.time.get_ticks())
+                    for bullet_data in bullets_fired:
+                        bullet = Bullet(int(bullet_data["pos"][0]), int(bullet_data["pos"][1]))
+                        bullet.velocity_y = -bullet_data["speed"]
+                        bullets.add(bullet)
+                    bullet_counter = weapon_system.ammo
             elif event.button == 7:
                 paused = not paused
+            elif event.button == 3: # Y button usually
+                if ultimate_system.charge >= ultimate_system.max_charge:
+                    ultimate_system.try_activate()
+            elif event.button == 4 or event.button == 5: # Bumpers
+                dash_system.try_dash()
         elif event.type == pygame.JOYBUTTONUP:
             if event.button == 0 and player.original_image is not None:
                 is_shooting = False
@@ -232,28 +378,30 @@ while running:
     if pygame.time.get_ticks() - last_shot_time > SHOOT_DELAY and is_shooting and not paused:
         if bullet_counter > 0:
             last_shot_time = pygame.time.get_ticks()
-            bullet = Bullet(player.rect.centerx, player.rect.top)
-            bullets.add(bullet)
-            bullet_counter -= 1
+            bullets_fired = weapon_system.fire((player.rect.centerx, player.rect.top), -90, pygame.time.get_ticks())
+            for bullet_data in bullets_fired:
+                bullet = Bullet(int(bullet_data["pos"][0]), int(bullet_data["pos"][1]))
+                bullet.velocity_y = -bullet_data["speed"]
+                bullets.add(bullet)
+            bullet_counter = weapon_system.ammo
 
     if joystick:
         if not paused:
-            move_player_with_joystick(joystick, player)
-
-    # Display pause screen if game is paused
-    if paused:
-        font = pygame.font.SysFont('Comic Sans MS', 40)
-        text = font.render("PAUSE", True, (255, 255, 255))  
-        text_rect = text.get_rect(center=(WIDTH / 2, HEIGHT / 2))  
-        screen.blit(text, text_rect)
-        pygame.display.flip()
-        continue  
+            move_player_with_joystick(joystick, player)  
 
     # === PLAYER MOVEMENT AND BACKGROUND RENDERING ===
     keys = pygame.key.get_pressed()
 
+    time_scale = ultimate_system.update()
+    dash_system.update(player)
+    drone_manager.update(player.rect, bullets, Bullet)
+
     if not paused:
-        move_player(keys, player)
+        if dash_system.is_dashing:
+            # maintain dashing in current direction based on last input
+            pass
+        else:
+            move_player(keys, player)
 
         screen.blit(current_image, (0, bg_y_shift))
         background_top_rect = background_top.get_rect(topleft=(0, bg_y_shift))
@@ -387,10 +535,18 @@ while running:
 
     # === GAME OVER AND RESET LOGIC ===
     if player_life <= 0:
+        # Update achievements and stats
+        achievement_system.update_progress("enemies", game_state.enemies_defeated)
+        achievement_system.update_progress("bosses", game_state.bosses_defeated)
+        achievement_system.update_progress("score", score)
+        achievement_system.save()
+        
         # Save score to leaderboard
         leaderboard.add_score(score, "Player")
         
         show_game_over(score)
+        
+        # Reset all systems
         boss1_spawned = False
         boss1_health = 150
         boss2_spawned = False
@@ -398,8 +554,11 @@ while running:
         boss3_spawned = False
         boss3_health = 200
         score = 0
-        player_life = 200
-        bullet_counter = 200
+        game_state.reset()
+        player_life = difficulty_system.get_current().player_health
+        player.max_hp = difficulty_system.get_current().player_health
+        weapon_system.ammo = weapon_system.max_ammo
+        bullet_counter = weapon_system.ammo
         player.rect.topleft = initial_player_pos
         bullets.empty()
         bullet_refill_group.empty()
@@ -443,31 +602,43 @@ while running:
     # === BULLET REFILL POWER-UP SYSTEM ===
     for bullet_refill in bullet_refill_group:
         bullet_refill.update()
-        bullet_refill.draw(screen)
+        screen.blit(bullet_refill.image, bullet_refill.rect)
 
         if player.rect.colliderect(bullet_refill.rect):
-            if bullet_counter < 200:
-                bullet_counter += 50
-                if bullet_counter > 200:
-                    bullet_counter = 200
+            if weapon_system.ammo < weapon_system.max_ammo:
+                weapon_system.add_ammo(50)
+                bullet_counter = weapon_system.ammo
                 bullet_refill.kill()
                 bullet_refill.sound_effect.play()
+                achievement_system.update_progress("powerups", 1)
+                sound_event_bus.trigger_event("power_up_collected")
             else:
                 bullet_refill.kill()
                 bullet_refill.sound_effect.play()
 
+    # === POWER-UP MANAGER UPDATE ===
+    powerup_manager.update(HEIGHT)
+    powerup_manager.draw(screen)
+    collected = powerup_manager.check_collision(player)
+    
+    for powerup in collected:
+        achievement_system.update_progress("powerups", 1)
+        sound_event_bus.trigger_event("power_up_collected")
+
     # === HEALTH REFILL POWER-UP SYSTEM ===
     for health_refill in health_refill_group:
         health_refill.update()
-        health_refill.draw(screen)
+        screen.blit(health_refill.image, health_refill.rect)
 
         if player.rect.colliderect(health_refill.rect):
-            if player_life < 200:
+            if player_life < player.max_hp:
                 player_life += 50
-                if player_life > 200:
-                    player_life = 200
+                if player_life > player.max_hp:
+                    player_life = player.max_hp
                 health_refill.kill()
                 health_refill.sound_effect.play()
+                achievement_system.update_progress("powerups", 1)
+                sound_event_bus.trigger_event("power_up_collected")
             else:
                 health_refill.kill()
                 health_refill.sound_effect.play()
@@ -475,7 +646,7 @@ while running:
     # === EXTRA SCORE COLLECTIBLE SYSTEM ===
     for extra_score in extra_score_group:
         extra_score.update()
-        extra_score.draw(screen)
+        screen.blit(extra_score.image, extra_score.rect)
 
         if player.rect.colliderect(extra_score.rect):
             score += 20
@@ -494,7 +665,7 @@ while running:
     # === DOUBLE REFILL POWER-UP SYSTEM ===
     for double_refill in double_refill_group:
         double_refill.update()
-        double_refill.draw(screen)
+        screen.blit(double_refill.image, double_refill.rect)
 
         if player.rect.colliderect(double_refill.rect):
             if player_life < 200:
@@ -513,22 +684,35 @@ while running:
 
     # === METEOR COMBAT SYSTEM ===
     for meteor_object in meteor_group:
+        if time_scale < 1.0:
+            meteor_object.speed *= time_scale
+            
         meteor_object.update()
         meteor_object.draw(screen)
+        
+        if time_scale < 1.0:
+            meteor_object.speed /= time_scale
 
-        if meteor_object.rect.colliderect(player.rect):
+        if meteor_object.rect.colliderect(player.rect) and not dash_system.is_dashing:
             player_life -= 10
+            damage_numbers.add(player.rect.centerx, player.rect.top, 10)
             explosion = Explosion(meteor_object.rect.center, explosion_images)
             explosions.add(explosion)
             meteor_object.kill()
             score += 50
-
+            
         bullet_collisions = pygame.sprite.spritecollide(meteor_object, bullets, True)
         for bullet_collision in bullet_collisions:
             explosion = Explosion(meteor_object.rect.center, explosion_images)
             explosions.add(explosion)
             meteor_object.kill()
             score += 80
+            level_system.add_xp(20)
+            ultimate_system.add_charge(15)
+            game_state.enemies_defeated += 1
+            achievement_system.update_progress("enemies", 1)
+            sound_event_bus.trigger_event("enemy_death")
+            difficulty_system.increase_progression()
 
             if random.randint(0, 10) == 0:
                 double_refill = DoubleRefill(
@@ -549,11 +733,18 @@ while running:
 
     # === METEOR2 COMBAT SYSTEM ===
     for meteor2_object in meteor2_group:
+        if time_scale < 1.0:
+            meteor2_object.speed *= time_scale
+            
         meteor2_object.update()
         meteor2_object.draw(screen)
+        
+        if time_scale < 1.0:
+            meteor2_object.speed /= time_scale
 
-        if meteor2_object.rect.colliderect(player.rect):
+        if meteor2_object.rect.colliderect(player.rect) and not dash_system.is_dashing:
             player_life -= 10
+            damage_numbers.add(player.rect.centerx, player.rect.top, 10)
             explosion = Explosion(meteor2_object.rect.center, explosion_images)
             explosions.add(explosion)
             meteor2_object.kill()
@@ -565,6 +756,12 @@ while running:
             explosions.add(explosion)
             meteor2_object.kill()
             score += 40
+            level_system.add_xp(15)
+            ultimate_system.add_charge(10)
+            game_state.enemies_defeated += 1
+            achievement_system.update_progress("enemies", 1)
+            sound_event_bus.trigger_event("enemy_death")
+            difficulty_system.increase_progression()
 
             if random.randint(0, 20) == 0:
                 double_refill = DoubleRefill(
@@ -585,11 +782,17 @@ while running:
 
     # === ENEMY1 COMBAT SYSTEM ===
     for enemy_object in enemy1_group:
-        enemy_object.update(enemy1_group)
-        enemy1_group.draw(screen)
+        if time_scale < 1.0:
+            enemy_object.speed *= time_scale
+            
+        enemy_object.update(enemy1_group, enemy2_bullets)
+        
+        if time_scale < 1.0:
+            enemy_object.speed /= time_scale
 
-        if enemy_object.rect.colliderect(player.rect):
+        if enemy_object.rect.colliderect(player.rect) and not dash_system.is_dashing:
             player_life -= 10
+            damage_numbers.add(player.rect.centerx, player.rect.top, 10)
             explosion = Explosion(enemy_object.rect.center, explosion_images)
             explosions.add(explosion)
             enemy_object.kill()
@@ -601,6 +804,12 @@ while running:
             explosions.add(explosion)
             enemy_object.kill()
             score += 50
+            level_system.add_xp(30)
+            ultimate_system.add_charge(25)
+            game_state.enemies_defeated += 1
+            achievement_system.update_progress("enemies", 1)
+            sound_event_bus.trigger_event("enemy_death")
+            difficulty_system.increase_progression()
 
             if random.randint(0, 8) == 0:
                 bullet_refill = BulletRefill(
@@ -620,13 +829,17 @@ while running:
 
     # === ENEMY2 ADVANCED COMBAT SYSTEM ===
     for enemy2_object in enemy2_group:
+        if time_scale < 1.0:
+            enemy2_object.speed *= time_scale
+            
         enemy2_object.update(enemy2_group, enemy2_bullets, player)
-        enemy2_group.draw(screen)
-        enemy2_bullets.update()
-        enemy2_bullets.draw(screen)
+        
+        if time_scale < 1.0:
+            enemy2_object.speed /= time_scale
 
-        if enemy2_object.rect.colliderect(player.rect):
+        if enemy2_object.rect.colliderect(player.rect) and not dash_system.is_dashing:
             player_life -= 40
+            damage_numbers.add(player.rect.centerx, player.rect.top, 40)
             explosion2 = Explosion2(enemy2_object.rect.center, explosion2_images)
             explosions2.add(explosion2)
             enemy2_object.kill()
@@ -638,6 +851,12 @@ while running:
             explosions2.add(explosion2)
             enemy2_object.kill()
             score += 80
+            level_system.add_xp(50)
+            ultimate_system.add_charge(35)
+            game_state.enemies_defeated += 1
+            achievement_system.update_progress("enemies", 1)
+            sound_event_bus.trigger_event("enemy_death")
+            difficulty_system.increase_progression()
 
             if random.randint(0, 20) == 0:
                 double_refill = DoubleRefill(
@@ -647,17 +866,26 @@ while running:
                 )
                 double_refill_group.add(double_refill)
 
-        for enemy2_bullet in enemy2_bullets:
-            if enemy2_bullet.rect.colliderect(player.rect):
-                player_life -= 10
-                explosion = Explosion(player.rect.center, explosion3_images)
-                explosions.add(explosion)
-                enemy2_bullet.kill()
+    for enemy2_bullet in enemy2_bullets:
+        if time_scale < 1.0:
+            enemy2_bullet.speed *= time_scale
+
+        if enemy2_bullet.rect.colliderect(player.rect) and not dash_system.is_dashing:
+            player_life -= 10
+            damage_numbers.add(player.rect.centerx, player.rect.top, 10)
+            explosion = Explosion(player.rect.center, explosion3_images)
+            explosions.add(explosion)
+            enemy2_bullet.kill()
+
+        if time_scale < 1.0:
+            enemy2_bullet.speed /= time_scale
+
+    enemy2_bullets.update()
 
     # === BOSS1 BATTLE SYSTEM ===
     for boss1_object in boss1_group:
         boss1_object.update(boss1_bullets, player)
-        boss1_group.draw(screen)
+        screen.blit(boss1_object.image, boss1_object.rect)
         boss1_bullets.update()
         boss1_bullets.draw(screen)
 
@@ -670,13 +898,21 @@ while running:
         for bullet_collision in bullet_collisions:
             explosion2 = Explosion(boss1_object.rect.center, explosion2_images)
             explosions2.add(explosion2)
-            boss1_health -= 5
+            damage = 5
+            boss1_health -= damage
+            damage_numbers.add(boss1_object.rect.centerx, boss1_object.rect.top, damage)
             
             if boss1_health <= 0:
                 explosion = Explosion2(boss1_object.rect.center, explosion3_images)
                 explosions.add(explosion)
                 boss1_object.kill()
                 score += 400
+                level_system.add_xp(200)
+                ultimate_system.add_charge(100)
+                game_state.bosses_defeated += 1
+                achievement_system.update_progress("bosses", 1)
+                achievement_system.complete_special("boss_slayer")
+                sound_event_bus.trigger_event("boss_death")
 
                 if random.randint(0, 20) == 0:
                     double_refill = DoubleRefill(
@@ -686,17 +922,18 @@ while running:
                     )
                     double_refill_group.add(double_refill)
 
-        for boss1_bullet in boss1_bullets:
-            if boss1_bullet.rect.colliderect(player.rect):
-                player_life -= 20
-                explosion = Explosion(player.rect.center, explosion3_images)
-                explosions.add(explosion)
-                boss1_bullet.kill()
-
         if boss1_health <= 0:
             explosion = Explosion2(boss1_object.rect.center, explosion2_images)
             explosions2.add(explosion)
             boss1_object.kill()
+
+    for boss1_bullet in boss1_bullets:
+        if boss1_bullet.rect.colliderect(player.rect) and not dash_system.is_dashing:
+            player_life -= 20
+            damage_numbers.add(player.rect.centerx, player.rect.top, 20)
+            explosion = Explosion(player.rect.center, explosion3_images)
+            explosions.add(explosion)
+            boss1_bullet.kill()
 
     # === BOSS1 HEALTH BAR RENDERING ===
     if boss1_group:
@@ -713,7 +950,7 @@ while running:
     # === BOSS2 BATTLE SYSTEM ===
     for boss2_object in boss2_group:
         boss2_object.update(boss2_bullets, player)
-        boss2_group.draw(screen)
+        screen.blit(boss2_object.image, boss2_object.rect)
         boss2_bullets.update()
         boss2_bullets.draw(screen)
 
@@ -726,13 +963,21 @@ while running:
         for bullet_collision in bullet_collisions:
             explosion2 = Explosion2(boss2_object.rect.center, explosion2_images)
             explosions2.add(explosion2)
-            boss2_health -= 8
+            damage = 8
+            boss2_health -= damage
+            damage_numbers.add(boss2_object.rect.centerx, boss2_object.rect.top, damage)
             
             if boss2_health <= 0:
                 explosion2 = Explosion2(boss2_object.rect.center, explosion3_images)
                 explosions2.add(explosion2)
                 boss2_object.kill()
                 score += 800
+                level_system.add_xp(400)
+                ultimate_system.add_charge(150)
+                game_state.bosses_defeated += 1
+                achievement_system.update_progress("bosses", 1)
+                achievement_system.complete_special("boss_slayer")
+                sound_event_bus.trigger_event("boss_death")
 
                 if random.randint(0, 20) == 0:
                     double_refill = DoubleRefill(
@@ -742,17 +987,18 @@ while running:
                     )
                     double_refill_group.add(double_refill)
 
-        for boss2_bullet in boss2_bullets:
-            if boss2_bullet.rect.colliderect(player.rect):
-                player_life -= 20
-                explosion = Explosion(player.rect.center, explosion3_images)
-                explosions.add(explosion)
-                boss2_bullet.kill()
-
         if boss2_health <= 0:
             explosion = Explosion2(boss2_object.rect.center, explosion2_images)
             explosions2.add(explosion)
             boss2_object.kill()
+
+    for boss2_bullet in boss2_bullets:
+        if boss2_bullet.rect.colliderect(player.rect) and not dash_system.is_dashing:
+            player_life -= 20
+            damage_numbers.add(player.rect.centerx, player.rect.top, 20)
+            explosion = Explosion(player.rect.center, explosion3_images)
+            explosions.add(explosion)
+            boss2_bullet.kill()
 
     # === BOSS2 HEALTH BAR RENDERING ===
     if boss2_group:
@@ -769,7 +1015,7 @@ while running:
     # === BOSS3 FINAL BOSS SYSTEM ===
     for boss3_object in boss3_group:
         boss3_object.update(boss3_bullets, player)
-        boss3_group.draw(screen)
+        screen.blit(boss3_object.image, boss3_object.rect)
         boss3_bullets.update()
         boss3_bullets.draw(screen)
 
@@ -782,13 +1028,21 @@ while running:
         for bullet_collision in bullet_collisions:
             explosion2 = Explosion2(boss3_object.rect.center, explosion2_images)
             explosions2.add(explosion2)
-            boss3_health -= 6
+            damage = 6
+            boss3_health -= damage
+            damage_numbers.add(boss3_object.rect.centerx, boss3_object.rect.top, damage)
             
             if boss3_health <= 0:
                 explosion2 = Explosion2(boss3_object.rect.center, explosion3_images)
                 explosions2.add(explosion2)
                 boss3_object.kill()
                 score += 1000
+                level_system.add_xp(600)
+                ultimate_system.add_charge(250)
+                game_state.bosses_defeated += 1
+                achievement_system.update_progress("bosses", 1)
+                achievement_system.complete_special("champion")
+                sound_event_bus.trigger_event("boss_death")
 
                 if random.randint(0, 20) == 0:
                     double_refill = DoubleRefill(
@@ -798,17 +1052,18 @@ while running:
                     )
                     double_refill_group.add(double_refill)
 
-        for boss3_bullet in boss3_bullets:
-            if boss3_bullet.rect.colliderect(player.rect):
-                player_life -= 20
-                explosion = Explosion(player.rect.center, explosion3_images)
-                explosions.add(explosion)
-                boss3_bullet.kill()
-
         if boss3_health <= 0:
             explosion = Explosion2(boss3_object.rect.center, explosion2_images)
             explosions2.add(explosion)
             boss3_object.kill()
+
+    for boss3_bullet in boss3_bullets:
+        if boss3_bullet.rect.colliderect(player.rect) and not dash_system.is_dashing:
+            player_life -= 20
+            damage_numbers.add(player.rect.centerx, player.rect.top, 20)
+            explosion = Explosion(player.rect.center, explosion3_images)
+            explosions.add(explosion)
+            boss3_bullet.kill()
 
     # === BOSS3 HEALTH BAR RENDERING ===
     if boss3_group:
@@ -826,6 +1081,13 @@ while running:
         )
 
     # === PLAYER RENDERING ===
+    enemy1_group.draw(screen)
+    enemy2_group.draw(screen)
+    enemy2_bullets.draw(screen)
+    
+    drone_manager.update(player.rect, bullets, Bullet)
+    drone_manager.draw(screen)
+    
     player_image_copy = player.image.copy()
     screen.blit(player_image_copy, player.rect)
 
@@ -857,11 +1119,28 @@ while running:
     score_display.score = score
     score_display.update(dt)
     particles.update(dt)
+    effects_manager.update(int(dt * 1000))
+    
+    # Apply screen effects
+    effected_surface = effects_manager.apply_effects(screen)
+    screen.blit(effected_surface, (0, 0))
     
     # Draw modern UI components
     health_bar.draw(screen)
     score_display.draw(screen)
     particles.draw(screen)
+    
+    # Modern Feature UIs
+    damage_numbers.update()
+    damage_numbers.draw(screen)
+    ultimate_system.draw_ui(screen, WIDTH, HEIGHT)
+    level_system.draw_ui(screen, WIDTH)
+    
+    # Draw weapon and ammo info
+    font_small = pygame.font.Font(None, 24)
+    current_weapon = weapon_system.get_current_weapon()
+    weapon_text = font_small.render(f"{current_weapon.name} | Ammo: {weapon_system.ammo}/{weapon_system.max_ammo}", True, (100, 200, 255))
+    screen.blit(weapon_text, (WIDTH - 350, 50))
 
     # === DISPLAY UPDATE AND FRAME CONTROL ===
     pygame.display.flip()

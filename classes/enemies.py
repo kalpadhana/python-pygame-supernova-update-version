@@ -12,8 +12,9 @@ class Enemy1(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=(x, y))
         self.speed = 4
         self.direction = random.choice([(-1, -1), (-1, 1), (1, -1), (1, 1)])
+        self.shoot_timer = 0
 
-    def update(self, enemy_group):
+    def update(self, enemy_group, enemy_bullets_group=None):
         dx, dy = self.direction
         self.rect.x += dx * self.speed
         self.rect.y += dy * self.speed
@@ -55,6 +56,13 @@ class Enemy1(pygame.sprite.Sprite):
 
                 self.rect.move_ip(-repel_vec.x, -repel_vec.y)
                 other_enemy.rect.move_ip(repel_vec.x, repel_vec.y)
+
+        if enemy_bullets_group is not None:
+            self.shoot_timer += 1
+            if self.shoot_timer >= 90:  # Shoot every 90 frames
+                bullet = Enemy2Bullet(self.rect.centerx, self.rect.bottom)
+                enemy_bullets_group.add(bullet)
+                self.shoot_timer = 0
 
 
 class Enemy2(pygame.sprite.Sprite):
